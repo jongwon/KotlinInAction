@@ -190,21 +190,148 @@
 
 ## 4. 컬렉션 처리 : 가변 길이 인자, 중위 함수 호출, 라이브러리 지원
 
+* vararg : 가변 길이 인자를 선언하는 키워드
+* 중위 함수 : 
+* 구조 분해 선언 : 복합적인 값을 분해해서 여러 변수에 나눠 담는다.
+
 #### 자바 Collection API 확장
+* 코틀린은 자바의 컬렉션 객체들에 다양한 확장 함수를 지원하고 있다.
+* 상황에 맞게 IDE 에서 코드 완성 기능을 보여주기 때문에 필요할 때 조사해서 쓰면 된다.
+
 
 #### 가변인자 함수 
 
+* 리스트 생성 함수
+  ```kotlin
+  val 숫자리스트 = listOf(1,2,3,4,5)
+  fun listOf<T> (vararg values: T): List<T> {...} // 구현 
+  ```
+* 자바는 타입 뒤에 ... 을 붙이지만 코틀린에서는 vararg 라는 키워드를 사용하도록 하고 있다.
+* 기술적으로는 스프레드(spread) 연산자(*) 가 작업을 해준다.
+* 배열에 * 를 붙여서 호출하면 인자가 펼쳐져서 들어간다.
+
 #### 값의 쌍 다루기: 중위 호출과 구조 분해 선언
+
+* 중위 호출 : 수신 객체가 호출하는 메서드에 인자가 한개 뿐인 경우 메서드 이름을 중간에 넣어서 사용할 수 있다.
+  ```kotlin
+  1.to("one")
+  1 to "one"
+  ```
+* 아무거나 그렇게 되는건 아니고, 중위 연산자로 사용하려면 함수 선언 앞에 infix 키워드를 선언해주어야 한다.
+  ```kotlin
+  infix fun Any.to(other:Any) = Pair(this, other)
+  ```
+  * to 함수는 Pair 인스턴스를 반환한다.
+  ```kotlin
+  val (숫자, 이름) = 1 to "one"
+  ```
+  * 이런 기능을 구조 분해 선언 이라고 부른다.
 
 
 ## 5. 문자열과 정규식 다루기
 
+코틀린의 문자열은 자바의 문자열과 같다.
+
 #### 문자열 다루기
+
+* 자바의 split 함수는 정규식을 인자로 받기 때문에 많은 혼란이 있다.
+  ```kotlin
+  "12.345-6.A".split(".") // 빈 값을 반환한다.
+  ```
+* 코틀린
+  ```kotlin
+    println("12.345-6.A".split("\\.|-".toRegex()))
+    println("12.345-6.A".split("."))
+    println("12.345-6.A".split(".", "-"))
+  ```
+  ```
+  [12, 345, 6, A]
+  [12, 345-6, A]
+  [12, 345, 6, A]
+  ```
 
 #### 정규식과 3중 따옴표 문자열
 
+* 확장 함수를 사용해 파일의 경로 파악하기
+  ```kotlin
+  fun 경로파싱 (경로 : String) {
+      val 디렉토리 = 경로.substringBeforeLast("/")
+      val 파일이름 = 경로.substringAfterLast("/") // 파일 이름 = 파일명.확장자
+      val 파일명 = 파일이름.substringBeforeLast(".")
+      val 확장자 = 파일이름.substringAfterLast(".")
+      println("Dir: $디렉토리, 파일명: $파일명, 확장자: $확장자 ")
+  }
+
+  경로파싱("/Users/path/to/file/Chapter3.adoc")
+  ```
+* 같은 기능을 정규식으로 구현하면 코드가 난해하고 복잡하다.
+  ```kotlin
+  fun 경로파싱2 (경로 : String) {
+      val 정규식 = """(.+)/(.+)\.(.+)""".toRegex();
+      val 매핑결과 = 정규식.matchEntire(경로)
+      if(매핑결과 != null){
+          val (디렉토리, 파일명, 확장자) = 매핑결과.destructured
+          println("Dir: $디렉토리, 파일명: $파일명, 확장자: $확장자 ")
+      }
+  }
+  ```
 #### 멀티라인 3중 따옴표 문자열 
 
+* 멀티라인을 문자열로 옮길 수 있다.
+* trimMargin 함수를 이용해 앞뒤 공백문자를 제거해 준다. (각 라인별로)
 
 ## 6. 코드 다듬기 : 로컬 함수와 확장
 
+```kotlin
+data class 사용자(
+    val 아이디 : Int, 
+    val 이름 : String="", 
+    val 주소: String=""
+)
+
+fun 사용자저장(사용자:사용자) {
+    if(사용자.이름.isEmpty()){
+        throw IllegalArgumentException("${사용자.아이디} 를 저장할 수 없습니다 : 빈 이름")
+    }
+    if(사용자.주소.isEmpty()){
+        throw IllegalArgumentException("${사용자.아이디} 를 저장할 수 없습니다 : 주소 없음")
+    }
+    // 사용자 저장
+    
+}
+
+fun main(){
+    println (사용자저장(사용자(12, "최종원", "과천")))
+}
+```
+
+내부 함수를 이용해 중복을 제거한다.
+```kotlin
+fun 사용자저장(사용자:사용자) {
+    fun 유효성검사 (사용자 :사용자, 값 :String, 필드이름: String) {
+        if(값.isEmpty()){
+            throw IllegalArgumentException("${사용자.아이디} 를 저장할 수 없습니다 : 빈 ${필드이름}")
+        }
+    }
+    유효성검사(사용자, 사용자.이름, "이름")
+    유효성검사(사용자, 사용자.주소, "주소")
+    // 사용자 저장
+
+}
+```
+
+확장 함수를 이용해 간단히 하기
+```kotlin
+data class 사용자(val 아이디 : Int, val 이름 : String="", val 주소: String="")
+
+fun 사용자.저장전_유효성_검사 () {
+    fun 유효성검사 (값 :String, 필드이름: String) {
+        if(값.isEmpty()){
+            throw IllegalArgumentException("${아이디} 를 저장할 수 없습니다 : 빈 ${필드이름}")
+        }
+    }
+    유효성검사(이름, "이름")
+    유효성검사(주소, "주소")
+    // 사용자 저장
+}
+```
